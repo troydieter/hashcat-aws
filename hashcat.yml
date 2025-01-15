@@ -1,0 +1,11 @@
+- hosts: localhost
+  connection: local
+  roles:
+          - ec2_create
+
+
+- hosts: hashcat
+  gather_facts: True
+  roles:
+          - ec2_hashcat
+

@@ -1,0 +1,126 @@
+- name: Update repo list (apt update) and upgrade instance (apt upgrade)
+  become: yes
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Upgrade the OS (apt dist-upgrade)
+  become: yes
+  ansible.builtin.apt:
+    upgrade: dist
+
+- name: Install p7zip
+  become: yes
+  ansible.builtin.apt:
+    name: p7zip
+    update_cache: yes
+
+- name: Install jq
+  become: yes
+  ansible.builtin.apt:
+    name: jq 
+    update_cache: yes
+
+# usually included in the default install, but we'll make sure just in case...
+- name: Install tmux
+  become: yes
+  ansible.builtin.apt:
+    name: tmux 
+    update_cache: yes
+
+
+#- name: Install build-essential
+#  become: yes
+#  ansible.builtin.apt:
+#    name: build-essential
+#    update_cache: yes
+
+- name: Install nVidia CUDA keyring 
+  become: yes
+  ansible.builtin.apt:
+    deb: https://developer.download.nvidia.com/compute/cuda/repos/{{ ec2.os }}/x86_64/cuda-keyring_1.0-1_all.deb
+
+- name: Install nVidia cuda-drivers
+  become: yes
+  ansible.builtin.apt:
+    name: cuda-drivers
+    update_cache: yes
+
+- name: Install nVidia cuda
+  become: yes
+  ansible.builtin.apt:
+    name: cuda
+    update_cache: yes
+
+- name: Copy hashcat_start script
+  become: yes
+  #ansible.builtin.copy:
+  template:
+    src: hashcat_start.j2
+    dest: /usr/local/bin/hashcat_start
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Download latest goofys
+  become: yes
+  ansible.builtin.get_url:
+    url: https://github.com/kahing/goofys/releases/latest/download/goofys
+    dest: /usr/local/bin/goofys
+    mode: '0755'
+
+- name: Create aws directory if it does not exist
+  become: yes
+  ansible.builtin.file:
+    path: /root/.aws/
+    state: directory
+    mode: '0755'
+
+- name: Copy AWS Credentials
+  become: yes
+  #ansible.builtin.copy:
+  template:
+    src: credentials.j2
+    dest: /root/.aws/credentials
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Set up fstab
+  become: yes
+  lineinfile:
+    dest: /etc/fstab
+    line: '{{ item }}'
+  with_items:
+    - 'goofys#{{ s3.bucket_name }}   {{ s3.mount_point }}        fuse     _netdev,allow_other,--file-mode=0660,--dir-mode=0770,--uid=1000,--gid=1000,--endpoint={{ s3.end_point }}    0       0'
+
+- name: Mount S3 bucket
+  become: true
+  command: mount /mnt
+    #args:
+    #warn: no
+
+- name: Copy .service
+  become: true
+  ansible.builtin.copy:
+    src: hashcat-cloud.service
+    dest: /etc/systemd/system/hashcat-cloud.service
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Tell systemd to reread configs 
+  become: true
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Enable .service
+  become: true
+  ansible.builtin.systemd:
+    state: stopped
+    enabled: true
+    name: hashcat-cloud
+
+- name: Reboot!
+  become: true
+  ansible.builtin.reboot:
+

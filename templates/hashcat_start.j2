@@ -1,0 +1,55 @@
+#!/bin/bash
+
+HASHCAT=/usr/local/hashcat/hashcat.bin
+###WORDLIST=/mnt/wordlists/rockyou.txt
+###WORDLIST=/mnt/wordlists/crackstation.txt
+WORDLIST=/mnt/wordlists/xsukax-Wordlist-All.txt
+RULES=/usr/local/hashcat/rules/best64.rule
+###HASHTYPE=22000
+HASHES=/mnt/hashes/
+TMP=/tmp/
+HOST=`/bin/hostname`
+
+# Download hashcat
+cd $TMP
+curl -s https://api.github.com/repos/hashcat/hashcat/releases/latest | jq '.assets[] | select(.name|match(".7z$")) | .browser_download_url' | sed 's/"/ /' | sed 's/"/ /' | wget -i -
+7zr x hashcat*.7z
+rm -f hashcat*.7z
+mv -f /tmp/hashcat* /usr/local/hashcat
+
+if [ -e /mnt/hashcat ]; then
+	cp -f /mnt/hashcat/hashcat.restore /usr/local/hashcat/hashcat.restore 
+	cp -f /mnt/hashcat/hashcat.potfile /usr/local/hashcat/hashcat.potfile
+	cp -f /mnt/hashcat/hashcat.dictstat2 /usr/local/hashcat/hashcat.dictstat2
+	cp -f /mnt/hashcat/hashcat.log /usr/local/hashcat/hashcat.log
+fi
+
+$HASHCAT -I >> $HASHES/hashcat-info-$HOST.log
+
+cd /mnt/hashes/
+
+HASHTYPE=`cat /mnt/hashes/crackme.type`
+session="hashcat"
+tmux new-session -d -s $session
+window=0
+tmux rename-window -t $session:$window 'hashcat'
+tmux send-keys -t $session:$window "$HASHCAT -o crackme.cracked -a 0 -m $HASHTYPE crackme $WORDLIST -r $RULES -w 4" C-m
+
+sleep 60s
+
+while true
+do
+	pidof hashcat.bin > /dev/null 2>&1
+	retVal=$?
+	if [[ $retVal -ne 0 ]]; then
+		cp -f /usr/local/hashcat/hashcat.restore /mnt/hashcat/hashcat.restore
+		cp -f /usr/local/hashcat/hashcat.potfile /mnt/hashcat/hashcat.potfile
+		cp -f /usr/local/hashcat/hashcat.dictstat2 /mnt/hashcat/hashcat.dictstat2
+		cp -f /usr/local/hashcat/hashcat.log /mnt/hashcat/hashcat.log
+		# shutdown instance so it can self-terminate
+		shutdown -h now
+	fi
+	sleep 60s
+done
+
+

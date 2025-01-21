@@ -1,0 +1,30 @@
+ec2:
+  region: us-west-2
+  credentials: <your ssh key name>
+  image: ami-0d70546e43a941d70 
+  sg: <your security group>
+  shutdownbehavior: terminate
+  ###instance_type: t2.nano 
+  instance_type: g5.xlarge
+  ###instance_type: p2.16xlarge 
+  # us-west-2a
+  subnet: subnet-0e58d276 
+  public_ip: yes
+  tags:
+    Name: hashcat
+  volumes:
+    #- device_name: /dev/xvda
+    #- device_name: /dev/sdf
+    - device_name: /dev/sda1
+      volume_type: standard
+      volume_size: 25 
+      delete_on_termination: true
+      modify_volume: true
+  nvidia_version: 515
+  os: ubuntu2204
+  access_key_id: <your key id>
+  secret_access_key: <your secret key> 
+s3:
+  bucket_name: <your bucket>
+  mount_point: /mnt/
+  end_point: <your bucket's endpoint>

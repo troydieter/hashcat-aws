@@ -1,0 +1,9 @@
+- name: Terminate hashcat instance
+  ec2:
+          region: "{{ ec2.region }}"
+          instance_tags: "{{ ec2.tags }}"
+          instance_profile_name: "{{ ec2.role | default('') }}"
+          image: "{{ ec2.image }}"
+          exact_count: 0
+          wait: true
+

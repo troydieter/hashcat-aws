@@ -7,10 +7,29 @@ resource "random_integer" "rando_int" {
   max = 100
 }
 
+module "s3_bucket" {
+  source = "terraform-aws-modules/s3-bucket/aws"
+
+  bucket_prefix = "hashcat"
+  acl           = "private"
+
+  control_object_ownership = true
+  object_ownership         = "ObjectWriter"
+
+  versioning = {
+    enabled = true
+  }
+}
+
 resource "aws_launch_template" "hashcat" {
   name_prefix   = "hashcat-"
   image_id      = var.ami
   instance_type = var.instance_size
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ec2_ssm.name
+  }
+  security_group_names = [aws_security_group.hashcat_sg.name]
+  key_name             = var.key_name
 
   user_data = base64encode(<<EOT
 #!/bin/bash
@@ -73,13 +92,6 @@ resource "aws_autoscaling_group" "hashcat" {
 
   vpc_zone_identifier = [tolist(data.aws_subnets.all.ids)[0], tolist(data.aws_subnets.all.ids)[1]]
   target_group_arns   = []
-  tags = [
-    {
-      key                 = "Name"
-      value               = "hashcat-instance"
-      propagate_at_launch = true
-    }
-  ]
 }
 
 ##################################################################
@@ -122,7 +134,7 @@ data "aws_iam_policy" "required-policy" {
 
 # IAM Role
 resource "aws_iam_role" "ssm-role" {
-  name = "eggdrop-${random_id.rando.hex}"
+  name = "hashcat-${random_id.rando.hex}"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -134,6 +146,15 @@ resource "aws_iam_role" "ssm-role" {
           Service = "ec2.amazonaws.com"
         }
       },
+      {
+        Sid    = "FullAccessToBucket",
+        Effect = "Allow",
+        Action = "s3:*",
+        Resource = [
+          module.s3_bucket.s3_bucket_arn,
+          "${module.s3_bucket.s3_bucket_arn}/*"
+        ]
+      }
     ]
   })
 }
@@ -145,6 +166,6 @@ resource "aws_iam_role_policy_attachment" "attach-ssm" {
 }
 
 resource "aws_iam_instance_profile" "ec2_ssm" {
-  name = "aws_ssm_eggdrop-${random_id.rando.hex}"
+  name = "aws_ssm_hashcat-${random_id.rando.hex}"
   role = aws_iam_role.ssm-role.name
 }

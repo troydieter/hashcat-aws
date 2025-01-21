@@ -38,3 +38,9 @@ variable "zone_id" {
   description = "Route53 Zone ID"
   default     = "Z10057183MLGVY8QQ2VGK"
 }
+
+variable "key_name" {
+  type        = string
+  default     = "hashcat"
+  description = "The Amazon EC2 Keypair name"
+}

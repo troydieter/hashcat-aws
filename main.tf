@@ -29,7 +29,7 @@ resource "aws_launch_template" "hashcat" {
     name = aws_iam_instance_profile.ec2_ssm.name
   }
   vpc_security_group_ids = [aws_security_group.hashcat_sg.id]
-  key_name             = var.key_name
+  key_name               = var.key_name
 
   user_data = base64encode(<<EOT
 #!/bin/bash
@@ -81,6 +81,7 @@ EOT
 }
 
 resource "aws_autoscaling_group" "hashcat" {
+  name = "hashcat-asg-${random_id.rando.hex}"
   launch_template {
     id      = aws_launch_template.hashcat.id
     version = "$Latest"
@@ -93,6 +94,11 @@ resource "aws_autoscaling_group" "hashcat" {
 
   vpc_zone_identifier = data.aws_subnets.all.ids
   target_group_arns   = []
+  tag {
+    key                 = "Name"
+    value               = "hashcat-${random_id.rando.hex}"
+    propagate_at_launch = true
+  }
 }
 
 ##################################################################

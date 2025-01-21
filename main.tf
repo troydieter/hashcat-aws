@@ -86,9 +86,9 @@ resource "aws_autoscaling_group" "hashcat" {
     version = "$Latest"
   }
 
-  min_size         = 1
-  max_size         = 5
-  desired_capacity = 1
+  min_size         = var.min_size
+  max_size         = var.max_size
+  desired_capacity = var.desired_capacity
 
   vpc_zone_identifier = [tolist(data.aws_subnets.all.ids)[0], tolist(data.aws_subnets.all.ids)[1]]
   target_group_arns   = []

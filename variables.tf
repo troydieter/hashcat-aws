@@ -30,7 +30,7 @@ variable "environment" {
 variable "instance_size" {
   type        = string
   description = "The instance size"
-  default     = "t3.nano"
+  default     = "t3.large"
 }
 
 variable "zone_id" {
@@ -43,4 +43,22 @@ variable "key_name" {
   type        = string
   default     = "hashcat"
   description = "The Amazon EC2 Keypair name"
+}
+
+variable "min_size" {
+  description = "The minimum number of instances in the Auto Scaling Group"
+  type        = number
+  default     = 1
+}
+
+variable "max_size" {
+  description = "The maximum number of instances in the Auto Scaling Group"
+  type        = number
+  default     = 2
+}
+
+variable "desired_capacity" {
+  description = "The desired number of instances in the Auto Scaling Group"
+  type        = number
+  default     = 1  
 }

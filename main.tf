@@ -113,8 +113,8 @@ resource "aws_security_group" "hashcat_sg" {
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
-    from_port   = -1
-    to_port     = -1
+    from_port   = 0
+    to_port     = 0
     protocol    = "-1"
     cidr_blocks = [var.home_ip]
   }
@@ -133,7 +133,7 @@ data "aws_iam_policy" "required-policy" {
 }
 
 # IAM Role
-resource "aws_iam_role" "ssm-role" {
+resource "aws_iam_role" "hashcat-role" {
   name = "hashcat-${random_id.rando.hex}"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -145,7 +145,18 @@ resource "aws_iam_role" "ssm-role" {
         Principal = {
           Service = "ec2.amazonaws.com"
         }
-      },
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy" "bucket_full_access" {
+  name        = "bucket-full-access"
+  description = "Allows all actions on the S3 bucket defined in module.s3_bucket"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
       {
         Sid    = "FullAccessToBucket",
         Effect = "Allow",
@@ -159,13 +170,19 @@ resource "aws_iam_role" "ssm-role" {
   })
 }
 
+
 # Attach the policy to the role
 resource "aws_iam_role_policy_attachment" "attach-ssm" {
-  role       = aws_iam_role.ssm-role.name
+  role       = aws_iam_role.hashcat-role.name
   policy_arn = data.aws_iam_policy.required-policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "attach-s3" {
+  role       = aws_iam_role.hashcat-role.name
+  policy_arn = aws_iam_policy.bucket_full_access.arn
 }
 
 resource "aws_iam_instance_profile" "ec2_ssm" {
   name = "aws_ssm_hashcat-${random_id.rando.hex}"
-  role = aws_iam_role.ssm-role.name
+  role = aws_iam_role.hashcat-role.name
 }

@@ -28,7 +28,7 @@ resource "aws_launch_template" "hashcat" {
   iam_instance_profile {
     name = aws_iam_instance_profile.ec2_ssm.name
   }
-  security_group_names = [aws_security_group.hashcat_sg.name]
+  vpc_security_group_ids = [aws_security_group.hashcat_sg.id]
   key_name             = var.key_name
 
   user_data = base64encode(<<EOT
@@ -90,14 +90,15 @@ resource "aws_autoscaling_group" "hashcat" {
   max_size         = var.max_size
   desired_capacity = var.desired_capacity
 
-  vpc_zone_identifier = [tolist(data.aws_subnets.all.ids)[0], tolist(data.aws_subnets.all.ids)[1]]
+
+  vpc_zone_identifier = data.aws_subnets.all.ids
   target_group_arns   = []
 }
 
 ##################################################################
 # Data sources to get VPC, subnet, security group and AMI details
 ##################################################################
-data "aws_vpc" "default" {
+data "aws_vpc" "selected" {
   id = var.vpc
 }
 
@@ -110,7 +111,7 @@ data "aws_subnets" "all" {
 
 resource "aws_security_group" "hashcat_sg" {
   name_prefix = "hashcat-sg-"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = data.aws_vpc.selected.id
 
   ingress {
     from_port   = 0

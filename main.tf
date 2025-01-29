@@ -33,6 +33,8 @@ resource "aws_launch_template" "hashcat" {
   user_data = base64encode(<<EOT
 #!/bin/bash
 
+#!/bin/bash
+
 # Enable logging for debugging
 exec > /var/log/user_data.log 2>&1
 set -x
@@ -48,8 +50,16 @@ HOST=`/bin/hostname`
 # Update package list
 apt-get update && apt-get install -y jq wget p7zip-full tmux awscli
 
-# Install NVIDIA drivers and CUDA
-apt-get install -y nvidia-driver-470 nvidia-cuda-toolkit
+# Install necessary dependencies and NVIDIA driver
+apt-get install -y software-properties-common
+sudo add-apt-repository ppa:graphics-drivers/ppa
+apt-get update
+apt-get install -y nvidia-driver-460 nvidia-cuda-toolkit-11.0
+
+# Clean up any broken packages and fix dependencies
+apt-get --fix-broken install
+apt-get install -f
+apt-get autoremove
 
 # Reboot to apply NVIDIA driver changes
 echo "Rebooting to apply NVIDIA driver changes..."

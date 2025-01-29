@@ -30,6 +30,12 @@ resource "aws_launch_template" "hashcat" {
   }
   vpc_security_group_ids = [aws_security_group.hashcat_sg.id]
   key_name               = var.key_name
+  instance_market_options {
+    market_type = "spot" # Set market type to spot
+    spot_options {
+      max_price = "0.25" # Set a maximum price for the Spot instance (example: 0.25 USD)
+    }
+  }
 
   user_data = base64encode(<<EOT
 #!/bin/bash
@@ -132,6 +138,14 @@ resource "aws_autoscaling_group" "hashcat" {
   launch_template {
     id      = aws_launch_template.hashcat.id
     version = "$Latest"
+  }
+  # Specify Spot Instances in the Auto Scaling Group
+  mixed_instances_policy {
+    instances_distribution {
+      on_demand_allocation_strategy = "prioritized"
+      spot_allocation_strategy      = "lowest-price" # Strategy for selecting Spot Instances
+      spot_instance_pools           = 2              # Number of Spot instance pools to choose from
+    }
   }
 
   min_size         = var.min_size

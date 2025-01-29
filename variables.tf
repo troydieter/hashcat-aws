@@ -30,7 +30,7 @@ variable "environment" {
 variable "instance_size" {
   type        = string
   description = "The instance size"
-  default     = "t3.large"
+  default     = "g4dn.xlarge"
 }
 
 variable "zone_id" {

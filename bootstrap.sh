@@ -30,7 +30,7 @@ apt-get autoremove
 
 # Reboot to apply NVIDIA driver changes
 echo "Rebooting to apply NVIDIA driver changes..."
-reboot
+sudo reboot
 sleep 60
 
 # Download and extract Hashcat

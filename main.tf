@@ -136,16 +136,6 @@ EOT
 resource "aws_autoscaling_group" "hashcat" {
   name = "hashcat-asg-${random_id.rando.hex}"
 
-  launch_template {
-    id      = aws_launch_template.hashcat.id
-    version = "$Latest"
-  }
-
-  min_size         = var.min_size
-  max_size         = var.max_size
-  desired_capacity = var.desired_capacity
-
-  # Specify Spot Instances in the Auto Scaling Group
   mixed_instances_policy {
     instances_distribution {
       on_demand_allocation_strategy = "prioritized"
@@ -155,10 +145,15 @@ resource "aws_autoscaling_group" "hashcat" {
 
     launch_template {
       launch_template_specification {
-        version = "$Latest"
+        launch_template_name = aws_launch_template.hashcat.name # Use launch_template_name here
+        version              = "$Latest"
       }
     }
   }
+
+  min_size         = var.min_size
+  max_size         = var.max_size
+  desired_capacity = var.desired_capacity
 
   vpc_zone_identifier       = data.aws_subnets.all.ids
   health_check_type         = "EC2" # Can also be "ELB" if using a load balancer
@@ -169,6 +164,8 @@ resource "aws_autoscaling_group" "hashcat" {
     propagate_at_launch = true
   }
 }
+
+
 
 ##################################################################
 # Data sources to get VPC, subnet, security group and AMI details

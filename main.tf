@@ -39,62 +39,90 @@ exec > /var/log/user_data.log 2>&1
 set -x
 
 # Variables
-HASHCAT_DIR="/usr/local/hashcat"
-TMP="/tmp"
-HOST=$(hostname)
+HASHCAT=/usr/local/hashcat/hashcat.bin
+WORDLIST=/mnt/wordlists/xsukax-Wordlist-All.txt
+RULES=/usr/local/hashcat/rules/best64.rule
+HASHES=/mnt/hashes/
+TMP=/tmp/
+HOST=`/bin/hostname`
 
-# Ensure required tools are installed
+# Update package list
 apt-get update && apt-get install -y jq wget p7zip-full tmux awscli
 
-# Ensure required directories exist
-mkdir -p /mnt/hashes /mnt/hashcat "$HASHCAT_DIR"
+# Install NVIDIA drivers and CUDA
+apt-get install -y nvidia-driver-470 nvidia-cuda-toolkit
 
-# Download Hashcat
+# Reboot to apply NVIDIA driver changes
+echo "Rebooting to apply NVIDIA driver changes..."
+reboot
+sleep 60
+
+# Download and extract Hashcat
 cd $TMP
-HASHCAT_URL=$(curl -s https://api.github.com/repos/hashcat/hashcat/releases/latest | jq -r '.assets[] | select(.name|endswith(".7z")) | .browser_download_url')
-if [[ -z "$HASHCAT_URL" ]]; then
-  echo "Error: Unable to fetch Hashcat download URL" | tee -a /var/log/user_data.log
+curl -s https://api.github.com/repos/hashcat/hashcat/releases/latest | jq -r '.assets[] | select(.name|endswith(".7z")) | .browser_download_url' | wget -i -
+7zr x hashcat*.7z
+rm -f hashcat*.7z
+mv -f /tmp/hashcat* /usr/local/hashcat
+
+# Ensure hashcat directory is accessible
+chmod -R 755 /usr/local/hashcat
+
+# Verify NVIDIA GPU
+nvidia-smi >> /var/log/nvidia-gpu-check.log 2>&1
+if [[ $? -ne 0 ]]; then
+  echo "Error: NVIDIA GPU not detected or drivers not installed properly." | tee -a /var/log/user_data.log
   exit 1
 fi
 
-wget -q "$HASHCAT_URL" -O hashcat.7z
-if [[ ! -f "hashcat.7z" ]]; then
-  echo "Error: Hashcat download failed" | tee -a /var/log/user_data.log
+# Restore previous session if exists
+if [ -e /mnt/hashcat ]; then
+  cp -f /mnt/hashcat/hashcat.restore /usr/local/hashcat/hashcat.restore 
+  cp -f /mnt/hashcat/hashcat.potfile /usr/local/hashcat/hashcat.potfile
+  cp -f /mnt/hashcat/hashcat.dictstat2 /usr/local/hashcat/hashcat.dictstat2
+  cp -f /mnt/hashcat/hashcat.log /usr/local/hashcat/hashcat.log
+fi
+
+# Check if hashcat is working
+$HASHCAT -I >> $HASHES/hashcat-info-$HOST.log 2>&1
+if [[ $? -ne 0 ]]; then
+  echo "Error: Hashcat failed initialization" | tee -a /var/log/user_data.log
   exit 1
 fi
 
-# Extract Hashcat
-7zr x hashcat.7z -o"$TMP/hashcat" && rm -f hashcat.7z
-
-# Find extracted Hashcat directory
-EXTRACTED_DIR=$(find "$TMP/hashcat" -maxdepth 1 -type d | tail -n 1)
-if [[ ! -d "$EXTRACTED_DIR" ]]; then
-  echo "Error: Hashcat extraction failed" | tee -a /var/log/user_data.log
+# Ensure hash list and type exist
+if [ ! -f /mnt/hashes/crackme.type ]; then
+  echo "Error: Hash type file not found!" | tee -a /var/log/user_data.log
   exit 1
 fi
 
-# Move extracted files correctly
-if [[ -d "$EXTRACTED_DIR/hashcat-6.2.6" ]]; then
-  mv "$EXTRACTED_DIR/hashcat-6.2.6"/* "$HASHCAT_DIR/"
-  rm -rf "$EXTRACTED_DIR/hashcat-6.2.6"
-else
-  mv "$EXTRACTED_DIR"/* "$HASHCAT_DIR/"
-fi
-chmod -R 755 "$HASHCAT_DIR"
+HASHTYPE=$(cat /mnt/hashes/crackme.type)
 
-# Verify Hashcat installation
-if [[ ! -f "$HASHCAT_DIR/hashcat.bin" ]]; then
-  echo "Error: Hashcat binary not found after installation" | tee -a /var/log/user_data.log
+# Start Hashcat in a tmux session
+session="hashcat"
+tmux new-session -d -s $session
+window=0
+tmux rename-window -t $session:$window 'hashcat'
+tmux send-keys -t $session:$window "$HASHCAT -o crackme.cracked -a 0 -m $HASHTYPE crackme $WORDLIST -r $RULES -w 4" C-m
+
+# Check if Hashcat is running
+sleep 10
+if ! pgrep -x "hashcat.bin" > /dev/null; then
+  echo "Error: Hashcat did not start properly" | tee -a /var/log/user_data.log
   exit 1
 fi
 
-# Check if Hashcat runs properly
-if ! "$HASHCAT_DIR/hashcat.bin" -V; then
-  echo "Error: Hashcat failed to run" | tee -a /var/log/user_data.log
-  exit 1
-fi
-
-echo "Hashcat installation successful!" | tee -a /var/log/user_data.log
+# Monitor Hashcat process
+while true; do
+  if ! pgrep -x "hashcat.bin" > /dev/null; then
+    echo "Hashcat finished, saving results..." | tee -a /var/log/user_data.log
+    cp -f /usr/local/hashcat/hashcat.restore /mnt/hashcat/hashcat.restore
+    cp -f /usr/local/hashcat/hashcat.potfile /mnt/hashcat/hashcat.potfile
+    cp -f /usr/local/hashcat/hashcat.dictstat2 /mnt/hashcat/hashcat.dictstat2
+    cp -f /usr/local/hashcat/hashcat.log /mnt/hashcat/hashcat.log
+    shutdown -h now
+  fi
+  sleep 60
+done
 EOT
   )
 }

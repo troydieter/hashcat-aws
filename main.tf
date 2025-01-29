@@ -135,10 +135,16 @@ EOT
 
 resource "aws_autoscaling_group" "hashcat" {
   name = "hashcat-asg-${random_id.rando.hex}"
+
   launch_template {
     id      = aws_launch_template.hashcat.id
     version = "$Latest"
   }
+
+  min_size         = var.min_size
+  max_size         = var.max_size
+  desired_capacity = var.desired_capacity
+
   # Specify Spot Instances in the Auto Scaling Group
   mixed_instances_policy {
     instances_distribution {
@@ -146,15 +152,15 @@ resource "aws_autoscaling_group" "hashcat" {
       spot_allocation_strategy      = "lowest-price" # Strategy for selecting Spot Instances
       spot_instance_pools           = 2              # Number of Spot instance pools to choose from
     }
+
+    launch_template {
+      launch_template_specification {
+        version = "$Latest"
+      }
+    }
   }
 
-  min_size         = var.min_size
-  max_size         = var.max_size
-  desired_capacity = var.desired_capacity
-
-
   vpc_zone_identifier       = data.aws_subnets.all.ids
-  target_group_arns         = []
   health_check_type         = "EC2" # Can also be "ELB" if using a load balancer
   health_check_grace_period = 300   # Give the instance 5 minutes to initialize
   tag {

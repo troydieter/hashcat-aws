@@ -33,6 +33,12 @@ resource "aws_launch_template" "hashcat" {
 
   user_data = base64encode(<<EOT
 #!/bin/bash
+
+# Enable logging for debugging
+exec > /var/log/user_data.log 2>&1
+set -x
+
+# Variables
 HASHCAT=/usr/local/hashcat/hashcat.bin
 WORDLIST=/mnt/wordlists/xsukax-Wordlist-All.txt
 RULES=/usr/local/hashcat/rules/best64.rule
@@ -40,12 +46,20 @@ HASHES=/mnt/hashes/
 TMP=/tmp/
 HOST=`/bin/hostname`
 
+# Ensure required tools are installed
+apt-get update && apt-get install -y jq wget p7zip-full tmux awscli
+
+# Download and extract Hashcat
 cd $TMP
-curl -s https://api.github.com/repos/hashcat/hashcat/releases/latest | jq '.assets[] | select(.name|match(".7z$")) | .browser_download_url' | sed 's/"/ /' | sed 's/"/ /' | wget -i -
+curl -s https://api.github.com/repos/hashcat/hashcat/releases/latest | jq -r '.assets[] | select(.name|endswith(".7z")) | .browser_download_url' | wget -i -
 7zr x hashcat*.7z
 rm -f hashcat*.7z
 mv -f /tmp/hashcat* /usr/local/hashcat
 
+# Ensure hashcat directory is accessible
+chmod -R 755 /usr/local/hashcat
+
+# Restore previous session if exists
 if [ -e /mnt/hashcat ]; then
   cp -f /mnt/hashcat/hashcat.restore /usr/local/hashcat/hashcat.restore 
   cp -f /mnt/hashcat/hashcat.potfile /usr/local/hashcat/hashcat.potfile
@@ -53,28 +67,46 @@ if [ -e /mnt/hashcat ]; then
   cp -f /mnt/hashcat/hashcat.log /usr/local/hashcat/hashcat.log
 fi
 
-$HASHCAT -I >> $HASHES/hashcat-info-$HOST.log
+# Check if hashcat is working
+$HASHCAT -I >> $HASHES/hashcat-info-$HOST.log 2>&1
+if [[ $? -ne 0 ]]; then
+  echo "Error: Hashcat failed initialization" | tee -a /var/log/user_data.log
+  exit 1
+fi
 
-cd /mnt/hashes/
-HASHTYPE=`cat /mnt/hashes/crackme.type`
+# Ensure hash list and type exist
+if [ ! -f /mnt/hashes/crackme.type ]; then
+  echo "Error: Hash type file not found!" | tee -a /var/log/user_data.log
+  exit 1
+fi
+
+HASHTYPE=$(cat /mnt/hashes/crackme.type)
+
+# Start Hashcat in a tmux session
 session="hashcat"
 tmux new-session -d -s $session
 window=0
 tmux rename-window -t $session:$window 'hashcat'
 tmux send-keys -t $session:$window "$HASHCAT -o crackme.cracked -a 0 -m $HASHTYPE crackme $WORDLIST -r $RULES -w 4" C-m
 
-sleep 60s
+# Check if Hashcat is running
+sleep 10
+if ! pgrep -x "hashcat.bin" > /dev/null; then
+  echo "Error: Hashcat did not start properly" | tee -a /var/log/user_data.log
+  exit 1
+fi
+
+# Monitor Hashcat process
 while true; do
-  pidof hashcat.bin > /dev/null 2>&1
-  retVal=$?
-  if [[ $retVal -ne 0 ]]; then
+  if ! pgrep -x "hashcat.bin" > /dev/null; then
+    echo "Hashcat finished, saving results..." | tee -a /var/log/user_data.log
     cp -f /usr/local/hashcat/hashcat.restore /mnt/hashcat/hashcat.restore
     cp -f /usr/local/hashcat/hashcat.potfile /mnt/hashcat/hashcat.potfile
     cp -f /usr/local/hashcat/hashcat.dictstat2 /mnt/hashcat/hashcat.dictstat2
     cp -f /usr/local/hashcat/hashcat.log /mnt/hashcat/hashcat.log
     shutdown -h now
   fi
-  sleep 60s
+  sleep 60
 done
 EOT
   )
@@ -92,8 +124,10 @@ resource "aws_autoscaling_group" "hashcat" {
   desired_capacity = var.desired_capacity
 
 
-  vpc_zone_identifier = data.aws_subnets.all.ids
-  target_group_arns   = []
+  vpc_zone_identifier       = data.aws_subnets.all.ids
+  target_group_arns         = []
+  health_check_type         = "EC2" # Can also be "ELB" if using a load balancer
+  health_check_grace_period = 300   # Give the instance 5 minutes to initialize
   tag {
     key                 = "Name"
     value               = "hashcat-${random_id.rando.hex}"

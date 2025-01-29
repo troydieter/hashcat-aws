@@ -30,13 +30,6 @@ resource "aws_launch_template" "hashcat" {
   }
   vpc_security_group_ids = [aws_security_group.hashcat_sg.id]
   key_name               = var.key_name
-  instance_market_options {
-    market_type = "spot" # Set market type to spot
-    spot_options {
-      max_price = "0.25" # Set a maximum price for the Spot instance (example: 0.25 USD)
-    }
-  }
-
   user_data = base64encode(<<EOT
 #!/bin/bash
 
@@ -139,7 +132,7 @@ resource "aws_autoscaling_group" "hashcat" {
   mixed_instances_policy {
     instances_distribution {
       on_demand_allocation_strategy = "prioritized"
-      spot_allocation_strategy      = "lowest-price" # Strategy for selecting Spot Instances
+      spot_allocation_strategy      = "lowest-price" # Spot instance allocation strategy
       spot_instance_pools           = 2              # Number of Spot instance pools to choose from
     }
 
@@ -156,16 +149,14 @@ resource "aws_autoscaling_group" "hashcat" {
   desired_capacity = var.desired_capacity
 
   vpc_zone_identifier       = data.aws_subnets.all.ids
-  health_check_type         = "EC2" # Can also be "ELB" if using a load balancer
-  health_check_grace_period = 300   # Give the instance 5 minutes to initialize
+  health_check_type         = "EC2"
+  health_check_grace_period = 300
   tag {
     key                 = "Name"
     value               = "hashcat-${random_id.rando.hex}"
     propagate_at_launch = true
   }
 }
-
-
 
 ##################################################################
 # Data sources to get VPC, subnet, security group and AMI details

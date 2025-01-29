@@ -39,42 +39,51 @@ exec > /var/log/user_data.log 2>&1
 set -x
 
 # Variables
-HASHCAT=/usr/local/hashcat/hashcat.bin
-WORDLIST=/mnt/wordlists/xsukax-Wordlist-All.txt
-RULES=/usr/local/hashcat/rules/best64.rule
-HASHES=/mnt/hashes/
-TMP=/tmp/
-HOST=`/bin/hostname`
+HASHCAT="/usr/local/hashcat/hashcat.bin"
+WORDLIST="/mnt/wordlists/xsukax-Wordlist-All.txt"
+RULES="/usr/local/hashcat/rules/best64.rule"
+HASHES="/mnt/hashes"
+TMP="/tmp"
+HOST=$(hostname)
 
 # Ensure required tools are installed
 apt-get update && apt-get install -y jq wget p7zip-full tmux awscli
 
+# Ensure required directories exist
+mkdir -p /mnt/hashes /mnt/hashcat /usr/local/hashcat
+
 # Download and extract Hashcat
 cd $TMP
-curl -s https://api.github.com/repos/hashcat/hashcat/releases/latest | jq -r '.assets[] | select(.name|endswith(".7z")) | .browser_download_url' | wget -i -
-7zr x hashcat*.7z
-rm -f hashcat*.7z
-mv -f /tmp/hashcat* /usr/local/hashcat
+HASHCAT_URL=$(curl -s https://api.github.com/repos/hashcat/hashcat/releases/latest | jq -r '.assets[] | select(.name|endswith(".7z")) | .browser_download_url')
+if [[ -z "$HASHCAT_URL" ]]; then
+  echo "Error: Unable to fetch Hashcat download URL" | tee -a /var/log/user_data.log
+  exit 1
+fi
 
-# Ensure hashcat directory is accessible
+wget -q "$HASHCAT_URL" -O hashcat.7z
+if [[ ! -f "hashcat.7z" ]]; then
+  echo "Error: Hashcat download failed" | tee -a /var/log/user_data.log
+  exit 1
+fi
+
+7zr x hashcat.7z -o/usr/local/hashcat && rm -f hashcat.7z
 chmod -R 755 /usr/local/hashcat
 
+# Verify Hashcat installation
+if ! $HASHCAT -V; then
+  echo "Error: Hashcat failed installation" | tee -a /var/log/user_data.log
+  exit 1
+fi
+
 # Restore previous session if exists
-if [ -e /mnt/hashcat ]; then
+if [ -d /mnt/hashcat ]; then
   cp -f /mnt/hashcat/hashcat.restore /usr/local/hashcat/hashcat.restore 
   cp -f /mnt/hashcat/hashcat.potfile /usr/local/hashcat/hashcat.potfile
   cp -f /mnt/hashcat/hashcat.dictstat2 /usr/local/hashcat/hashcat.dictstat2
   cp -f /mnt/hashcat/hashcat.log /usr/local/hashcat/hashcat.log
 fi
 
-# Check if hashcat is working
-$HASHCAT -I >> $HASHES/hashcat-info-$HOST.log 2>&1
-if [[ $? -ne 0 ]]; then
-  echo "Error: Hashcat failed initialization" | tee -a /var/log/user_data.log
-  exit 1
-fi
-
-# Ensure hash list and type exist
+# Check if hash list and type exist
 if [ ! -f /mnt/hashes/crackme.type ]; then
   echo "Error: Hash type file not found!" | tee -a /var/log/user_data.log
   exit 1
@@ -82,14 +91,18 @@ fi
 
 HASHTYPE=$(cat /mnt/hashes/crackme.type)
 
+# Run Hashcat info and check for errors
+if ! $HASHCAT -I >> "$HASHES/hashcat-info-$HOST.log" 2>&1; then
+  echo "Error: Hashcat failed initialization" | tee -a /var/log/user_data.log
+  exit 1
+fi
+
 # Start Hashcat in a tmux session
 session="hashcat"
 tmux new-session -d -s $session
-window=0
-tmux rename-window -t $session:$window 'hashcat'
-tmux send-keys -t $session:$window "$HASHCAT -o crackme.cracked -a 0 -m $HASHTYPE crackme $WORDLIST -r $RULES -w 4" C-m
+tmux send-keys -t $session "$HASHCAT -o crackme.cracked -a 0 -m $HASHTYPE crackme $WORDLIST -r $RULES -w 4" C-m
 
-# Check if Hashcat is running
+# Ensure Hashcat started properly
 sleep 10
 if ! pgrep -x "hashcat.bin" > /dev/null; then
   echo "Error: Hashcat did not start properly" | tee -a /var/log/user_data.log

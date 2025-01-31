@@ -13,18 +13,18 @@ TMP=/tmp/
 HOST=`/bin/hostname`
 
 # Update package list
-apt-get update && apt-get install -y jq wget p7zip-full tmux awscli
+sudo apt-get update && sudo apt-get install -y jq wget p7zip-full tmux awscli
 
 # Install necessary dependencies and NVIDIA driver
-apt-get install -y software-properties-common
+sudo apt-get install -y software-properties-common
 sudo add-apt-repository -y ppa:graphics-drivers/ppa
-apt-get update
-apt-get install -y nvidia-driver-460 nvidia-cuda-toolkit-11.0
+sudo apt-get update
+sudo apt-get install -y nvidia-driver-460 nvidia-cuda-toolkit-11.0
 
 # Clean up any broken packages and fix dependencies
-apt-get --fix-broken install
-apt-get install -f
-apt-get autoremove
+sudo apt-get --fix-broken install
+sudo apt-get install -f
+sudo apt-get autoremove
 
 # Reboot to apply NVIDIA driver changes
 echo "Rebooting to apply NVIDIA driver changes..."

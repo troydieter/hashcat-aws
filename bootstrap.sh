@@ -27,9 +27,9 @@ sudo apt-get install -f
 sudo apt-get autoremove
 
 # Reboot to apply NVIDIA driver changes
-echo "Rebooting to apply NVIDIA driver changes..."
-sudo reboot
-sleep 60
+# echo "Rebooting to apply NVIDIA driver changes..."
+# sudo reboot
+# sleep 60
 
 # Download and extract Hashcat
 cd $TMP

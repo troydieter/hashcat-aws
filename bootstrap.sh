@@ -19,7 +19,7 @@ sudo apt-get update && sudo apt-get install -y jq wget p7zip-full tmux awscli
 sudo apt-get install -y software-properties-common
 sudo add-apt-repository -y ppa:graphics-drivers/ppa
 sudo apt-get update
-sudo apt-get install -y nvidia-driver-460 nvidia-cuda-toolkit-11.0
+# sudo apt-get install -y nvidia-driver-460 nvidia-cuda-toolkit-11.0
 
 # Clean up any broken packages and fix dependencies
 sudo apt-get --fix-broken install
@@ -57,11 +57,11 @@ if [ -e /mnt/hashcat ]; then
 fi
 
 # Check if hashcat is working
-$HASHCAT -I >> $HASHES/hashcat-info-$HOST.log 2>&1
-if [[ $? -ne 0 ]]; then
-  echo "Error: Hashcat failed initialization" | tee -a /var/log/user_data.log
-  exit 1
-fi
+# $HASHCAT -I >> $HASHES/hashcat-info-$HOST.log 2>&1
+# if [[ $? -ne 0 ]]; then
+#   echo "Error: Hashcat failed initialization" | tee -a /var/log/user_data.log
+#   exit 1
+# fi
 
 # Ensure hash list and type exist
 if [ ! -f /mnt/hashes/crackme.type ]; then

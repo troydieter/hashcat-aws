@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#!/bin/bash
-
 # Enable logging for debugging
 exec > /var/log/user_data.log 2>&1
 set -x
@@ -19,7 +17,7 @@ apt-get update && apt-get install -y jq wget p7zip-full tmux awscli
 
 # Install necessary dependencies and NVIDIA driver
 apt-get install -y software-properties-common
-sudo add-apt-repository ppa:graphics-drivers/ppa
+sudo add-apt-repository -y ppa:graphics-drivers/ppa
 apt-get update
 apt-get install -y nvidia-driver-460 nvidia-cuda-toolkit-11.0
 

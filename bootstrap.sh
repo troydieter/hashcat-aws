@@ -100,7 +100,7 @@ while true; do
         done
         
         # Shutdown system
-        shutdown -h now
+        # shutdown -h now
     fi
     sleep 60
 done

@@ -18,8 +18,10 @@ variable "home_ip" {
 variable "ami" {
   type        = string
   description = "AMI to be used"
-  default     = "ami-0e1bed4f06a3b463d"
+  default     = "ami-0fb38d50689a99602"   # amazon/Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04) 20250117 -- us-east-1
 }
+
+# us-east-2 : ami-03969617445ddf209
 
 variable "environment" {
   type        = string

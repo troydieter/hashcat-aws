@@ -43,6 +43,8 @@ resource "aws_autoscaling_group" "hashcat" {
       spot_instance_pools           = 2              # Number of Spot instance pools to choose from
     }
 
+
+
     launch_template {
       launch_template_specification {
         launch_template_name = aws_launch_template.hashcat.name # Use launch_template_name here
@@ -51,6 +53,11 @@ resource "aws_autoscaling_group" "hashcat" {
     }
   }
 
+  instance_maintenance_policy {
+    min_healthy_percentage = 90
+    max_healthy_percentage = 120
+  }
+  
   min_size         = var.min_size
   max_size         = var.max_size
   desired_capacity = var.desired_capacity

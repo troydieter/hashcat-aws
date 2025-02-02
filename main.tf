@@ -25,6 +25,9 @@ resource "aws_launch_template" "hashcat" {
   name_prefix   = "hashcat-"
   image_id      = var.ami
   instance_type = var.instance_size
+  monitoring {
+    enabled = True
+  }
   iam_instance_profile {
     name = aws_iam_instance_profile.ec2_ssm.name
   }

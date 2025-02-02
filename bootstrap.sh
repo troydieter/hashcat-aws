@@ -18,6 +18,7 @@ sudo apt-get update && sudo apt-get install -y \
     p7zip-full \
     tmux \
     awscli \
+    stress \
     software-properties-common
 
 # Add and update NVIDIA drivers repository

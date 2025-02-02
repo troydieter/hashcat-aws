@@ -30,7 +30,7 @@ resource "aws_launch_template" "hashcat" {
   }
   vpc_security_group_ids = [aws_security_group.hashcat_sg.id]
   key_name               = var.key_name
-  user_data = base64encode(file("bootstrap.sh"))
+  user_data              = base64encode(file("bootstrap.sh"))
 }
 
 resource "aws_autoscaling_group" "hashcat" {
@@ -57,7 +57,7 @@ resource "aws_autoscaling_group" "hashcat" {
     min_healthy_percentage = 90
     max_healthy_percentage = 120
   }
-  
+
   min_size         = var.min_size
   max_size         = var.max_size
   desired_capacity = var.desired_capacity
@@ -69,6 +69,33 @@ resource "aws_autoscaling_group" "hashcat" {
     key                 = "Name"
     value               = "hashcat-${random_id.rando.hex}"
     propagate_at_launch = true
+  }
+}
+
+resource "aws_autoscalingplans_scaling_plan" "hashcat" {
+  name = "hashcat-asg-plan-dynamic-${random_id.rando.hex}"
+
+  application_source {
+    tag_filter {
+      key    = "Name"
+      values = ["hashcat-${random_id.rando.hex}"]
+    }
+  }
+
+  scaling_instruction {
+    max_capacity       = 2
+    min_capacity       = 0
+    resource_id        = format("autoScalingGroup/%s", aws_autoscaling_group.hashcat.name)
+    scalable_dimension = "autoscaling:autoScalingGroup:DesiredCapacity"
+    service_namespace  = "autoscaling"
+
+    target_tracking_configuration {
+      predefined_scaling_metric_specification {
+        predefined_scaling_metric_type = "ASGAverageCPUUtilization"
+      }
+
+      target_value = 70
+    }
   }
 }
 

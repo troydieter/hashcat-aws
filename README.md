@@ -1,4 +1,4 @@
-# AWS Hashcat Infrastructure
+# Hashcat deployed to an Amazon EC2 ASG
 
 This project provides an automated way to deploy and manage a fleet of GPU-enabled EC2 instances for running Hashcat password cracking operations at scale using AWS infrastructure.
 

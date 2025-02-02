@@ -72,6 +72,12 @@ resource "aws_autoscaling_group" "hashcat" {
   }
 }
 
+# Retrieve current NAT'd public IP address - Windows only
+# If this is having issues, use the var.home_ip variable instead and define the string.
+data "external" "current_ip" {
+  program = ["powershell", "-Command", "(Invoke-WebRequest -Uri 'https://ifconfig.io').Content.Trim() | ConvertTo-Json -Compress | % { '{\"ip\":\"' + ($_ -replace '\"','') + '/32\"}' }"]
+}
+
 ##################################################################
 # Data sources to get VPC, subnet, security group and AMI details
 ##################################################################
@@ -94,7 +100,7 @@ resource "aws_security_group" "hashcat_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = [var.home_ip]
+    cidr_blocks = [data.external.current_ip.result.ip]
   }
 
   egress {

@@ -1,24 +1,25 @@
 variable "aws_region" {
   type        = string
   description = "AWS Region"
-  default     = "us-east-1"
+  default     = "us-east-2"
 }
 variable "vpc" {
   type        = string
   description = "VPC to deploy to"
-  default     = "vpc-0a2a83d4e068c74c6"
+  default     = "vpc-028a6a7484d0cafce"
 }
 
-variable "home_ip" {
-  type        = string
-  description = "My Home IP"
-  default     = "69.244.147.227/32"
-}
+# Only to be used if the ifconfig.io data source isn't working
+# variable "home_ip" {
+#   type        = string
+#   description = "My Home IP"
+#   default     = "123.22.33.11/32"
+# }
 
 variable "ami" {
   type        = string
   description = "AMI to be used"
-  default     = "ami-0fb38d50689a99602"   # amazon/Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04) 20250117 -- us-east-1
+  default     = "ami-03969617445ddf209"   # amazon/Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04) 20250117 -- us-east-1
 }
 
 # us-east-2 : ami-03969617445ddf209

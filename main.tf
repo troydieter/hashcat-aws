@@ -72,6 +72,22 @@ resource "aws_autoscaling_group" "hashcat" {
   }
 }
 
+resource "aws_autoscaling_lifecycle_hook" "instance_launching" {
+  name                   = "hashcat-instance-launching"
+  autoscaling_group_name = aws_autoscaling_group.hashcat.name
+  lifecycle_transition   = "autoscaling:EC2_INSTANCE_LAUNCHING"
+  heartbeat_timeout      = 300
+  default_result         = "CONTINUE"
+}
+
+resource "aws_autoscaling_lifecycle_hook" "instance_terminating" {
+  name                   = "hashcat-instance-terminating"
+  autoscaling_group_name = aws_autoscaling_group.hashcat.name
+  lifecycle_transition   = "autoscaling:EC2_INSTANCE_TERMINATING"
+  heartbeat_timeout      = 300
+  default_result         = "CONTINUE"
+}
+
 # Retrieve current NAT'd public IP address - Windows only
 # If this is having issues, use the var.home_ip variable instead and define the string.
 data "external" "current_ip" {

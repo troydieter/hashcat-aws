@@ -36,4 +36,4 @@ override.tf.json
 .terraformrc
 terraform.rc
 remote_state.tf
-.terraform_lock.hcl
+.terraform.lock.hcl

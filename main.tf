@@ -46,8 +46,6 @@ resource "aws_autoscaling_group" "hashcat" {
       spot_instance_pools           = 2              # Number of Spot instance pools to choose from
     }
 
-
-
     launch_template {
       launch_template_specification {
         launch_template_name = aws_launch_template.hashcat.name # Use launch_template_name here
